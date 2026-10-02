@@ -1,0 +1,22 @@
+{
+  "name": "Qarz Nazorati",
+  "short_name": "Qarz Nazorati",
+  "start_url": "./?page=admin",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": [
+    {
+      "src": "https://i.ibb.co/MxcrqKMd/Qarz-Nazorati-Icon.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://i.ibb.co/MxcrqKMd/Qarz-Nazorati-Icon.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
+}
