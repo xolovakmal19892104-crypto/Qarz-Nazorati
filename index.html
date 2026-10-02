@@ -14,10 +14,17 @@
 
   <script>
     window.addEventListener("DOMContentLoaded", function() {
-      const googleScriptUrl = "https://script.google.com/macros/s/AKfycbxOxleyYqWkfO32bB_Pb42pEYx7FwhuZNDkwsCYGZcxvAi6C2GulvaR8o_WtAmgzjKsRQ/exec";
-      const searchParams = window.location.search;
+      const baseUrl = "https://script.google.com/macros/s/AKfycbxOxleyYqWkfO32bB_Pb42pEYx7FwhuZNDkwsCYGZcxvAi6C2GulvaR8o_WtAmgzjKsRQ/exec";
       
-      document.getElementById("myIframe").src = googleScriptUrl + searchParams;
+      const params = new URLSearchParams(window.location.search);
+      const page = params.get("page");
+      
+      let finalUrl = baseUrl;
+      if (page) {
+        finalUrl += "?page=" + encodeURIComponent(page);
+      }
+      
+      document.getElementById("myIframe").src = finalUrl;
     });
   </script>
 </body>
