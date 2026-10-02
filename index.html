@@ -10,17 +10,15 @@
   </style>
 </head>
 <body>
-  <iframe id="myIframe"></iframe>
+  <iframe id="myIframe" src=""></iframe>
 
   <script>
-    // Asosiy Google Apps Script havolangiz
-    const googleScriptUrl =https://script.google.com/macros/s/AKfycbxOxLeYqVkfOJ2bB_PbA2pEYx7FwhuZNDkwsCYgZCxvAi6C2GwAvaR8o_WtAmgrzjKsRQ/exec;
-
-    // Brauzer manzilidagi parametrlarni (?page=admin yoki ?page=katalog) o'qiydi
-    const searchParams = window.location.search;
-
-    // Parametrlarni iframe ichiga uzatadi
-    document.getElementById("myIframe").src = googleScriptUrl + searchParams;
+    window.addEventListener("DOMContentLoaded", function() {
+      const googleScriptUrl = "https://script.google.com/macros/s/AKfycbxOxleyYqWkfO32bB_Pb42pEYx7FwhuZNDkwsCYGZcxvAi6C2GulvaR8o_WtAmgzjKsRQ/exec";
+      const searchParams = window.location.search;
+      
+      document.getElementById("myIframe").src = googleScriptUrl + searchParams;
+    });
   </script>
 </body>
 </html>
