@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang="uz">
 <head>
   <meta charset="UTF-8">
@@ -6,18 +7,19 @@
 
   <!-- PWA va Ikonka sozlamalari -->
   <link rel="manifest" href="manifest.json">
-  <link rel="icon" type="image/jpeg" href="LOGO.png">
+  <link rel="icon" type="image/png" href="LOGO.png">
   <link rel="apple-touch-icon" href="LOGO.png">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
 
   <style>
-    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
+    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #121212; }
     iframe { width: 100%; height: 100%; border: none; }
   </style>
 </head>
 <body>
-    <iframe id="myIframe" src="" allow="camera; microphone"></iframe>
+
+  <iframe id="myIframe" src=""></iframe>
 
   <script>
     window.addEventListener("DOMContentLoaded", function() {
@@ -33,6 +35,56 @@
       finalUrl += "embedded=github";
 
       document.getElementById("myIframe").src = finalUrl;
+    });
+
+    // Kamera oynasini chiqarish
+    window.addEventListener("message", function(event) {
+      if (event.data && event.data.action === "openCamera") {
+        var scannerWindow = window.open("", "_blank", "width=500,height=600");
+        if (scannerWindow) {
+          scannerWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>Skaner</title>
+              <script src="https://unpkg.com/html5-qrcode"><\/script>
+              <style>
+                body { font-family: sans-serif; text-align: center; background: #121212; color: white; padding: 20px; }
+                #reader { width: 100%; max-width: 400px; margin: auto; }
+                button { padding: 12px 24px; background: #e53935; color: white; border: none; border-radius: 8px; margin-top: 15px; font-size: 16px; cursor: pointer; }
+              </style>
+            </head>
+            <body>
+              <h3>Shtrix-kod yoki QR kodni ko'rsating</h3>
+              <div id="reader"></div>
+              <button onclick="window.close()">Yopish</button>
+              <script>
+                const html5QrCode = new Html5Qrcode("reader");
+                html5QrCode.start(
+                  { facingMode: "environment" },
+                  { fps: 10, qrbox: { width: 250, height: 150 } },
+                  (decodedText) => {
+                    if (window.opener) {
+                      window.opener.postMessage({ type: "scannedResult", code: decodedText }, "*");
+                    }
+                    html5QrCode.stop().then(() => window.close());
+                  },
+                  (errorMessage) => {}
+                ).catch(err => alert("Kameraga ruxsat berilmadi: " + err));
+              <\/script>
+            </body>
+            </html>
+          `);
+        } else {
+          alert("Qalqib chiquvchi oynalarga (Popup) ruxsat bering!");
+        }
+      } else if (event.data && event.data.type === "scannedResult") {
+        const iframe = document.getElementById("myIframe");
+        if (iframe && iframe.contentWindow) {
+          iframe.contentWindow.postMessage(event.data, "*");
+        }
+      }
     });
   </script>
 </body>
