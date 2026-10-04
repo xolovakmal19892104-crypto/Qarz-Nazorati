@@ -7,8 +7,8 @@
 
   <!-- PWA va Ikonka sozlamalari -->
   <link rel="manifest" href="manifest.json">
-  <link rel="icon" type="image/png" href="LOGO.png">
-  <link rel="apple-touch-icon" href="LOGO.png">
+  <link rel="icon" type="image/jpeg" href="texno_legend_qarz_nazorati_512x512.jpg">
+  <link rel="apple-touch-icon" href="texno_legend_qarz_nazorati_512x512.jpg">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
 
@@ -37,7 +37,7 @@
       document.getElementById("myIframe").src = finalUrl;
     });
 
-    // Kamera oynasini chiqarish
+    // Google Apps Script (iframe) dan kamera chaqirilganda uni ochib beruvchi mantiq
     window.addEventListener("message", function(event) {
       if (event.data && event.data.action === "openCamera") {
         var scannerWindow = window.open("", "_blank", "width=500,height=600");
@@ -77,9 +77,10 @@
             </html>
           `);
         } else {
-          alert("Qalqib chiquvchi oynalarga (Popup) ruxsat bering!");
+          alert("Brauzeringizda qalqib chiquvchi oynalarga (Popup) ruxsat bering!");
         }
       } else if (event.data && event.data.type === "scannedResult") {
+        // Skan qilingan kodni Google Apps Script (iframe) ichiga uzatish
         const iframe = document.getElementById("myIframe");
         if (iframe && iframe.contentWindow) {
           iframe.contentWindow.postMessage(event.data, "*");
