@@ -26,7 +26,7 @@
       const baseUrl = "https://script.google.com/macros/s/AKfycbxOxLeYqVkfOJ2bB_PbA2pEYx7FwhuZNDkwsCYgZCxvAi6C2GwAvaR8o_WtAmgrzjKsRQ/exec";
 
       const params = new URLSearchParams(window.location.search);
-      const page = params.get("page");
+     const page = params.get("page") || "admin";
 
       let finalUrl = baseUrl + "?";
       if (page) {
