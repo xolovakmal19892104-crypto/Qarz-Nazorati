@@ -19,14 +19,14 @@
 </head>
 <body>
 
-  <iframe id="myIframe" src=""></iframe>
+  <iframe id="myIframe" src="" allow="camera; microphone"></iframe>
 
   <script>
     window.addEventListener("DOMContentLoaded", function() {
       const baseUrl = "https://script.google.com/macros/s/AKfycbxOxLeYqVkfOJ2bB_PbA2pEYx7FwhuZNDkwsCYgZCxvAi6C2GwAvaR8o_WtAmgrzjKsRQ/exec";
 
       const params = new URLSearchParams(window.location.search);
-     const page = params.get("page") || "admin";
+      const page = params.get("page");
 
       let finalUrl = baseUrl + "?";
       if (page) {
@@ -37,8 +37,22 @@
       document.getElementById("myIframe").src = finalUrl;
     });
 
-    // Google Apps Script (iframe) dan kamera chaqirilganda uni ochib beruvchi mantiq
+    // Xabarni iframe ichidagi BARCHA ichki ramkalarga yetkazish.
+    // (Google Apps Script sahifani 2-3 qavat ramka ichida ko'rsatadi,
+    // shuning uchun oddiy postMessage ichkariga yetib bormaydi.)
+    function hammaRamkalargaYuborish(oyna, malumot, chuqurlik) {
+      if (!oyna || chuqurlik > 4) return;
+      try { oyna.postMessage(malumot, "*"); } catch (e) {}
+      var soni = 0;
+      try { soni = oyna.length; } catch (e) {}
+      for (var i = 0; i < soni; i++) {
+        try { hammaRamkalargaYuborish(oyna[i], malumot, chuqurlik + 1); } catch (e) {}
+      }
+    }
+
     window.addEventListener("message", function(event) {
+
+      // 1) Ilova kamera so'radi -> skaner oynasini ochamiz
       if (event.data && event.data.action === "openCamera") {
         var scannerWindow = window.open("", "_blank", "width=500,height=600");
         if (scannerWindow) {
@@ -48,7 +62,7 @@
             <head>
               <meta name="viewport" content="width=device-width, initial-scale=1.0">
               <title>Skaner</title>
-              <script src="https://unpkg.com/html5-qrcode"><\/script>
+              <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"><\/script>
               <style>
                 body { font-family: sans-serif; text-align: center; background: #121212; color: white; padding: 20px; }
                 #reader { width: 100%; max-width: 400px; margin: auto; }
@@ -56,7 +70,7 @@
               </style>
             </head>
             <body>
-              <h3>Shtrix-kod yoki QR kodni ko'rsating</h3>
+              <h3>IMEI shtrix-kodini ko'rsating</h3>
               <div id="reader"></div>
               <button onclick="window.close()">Yopish</button>
               <script>
@@ -76,14 +90,16 @@
             </body>
             </html>
           `);
+          scannerWindow.document.close();
         } else {
           alert("Brauzeringizda qalqib chiquvchi oynalarga (Popup) ruxsat bering!");
         }
+
+      // 2) Skaner natija qaytardi -> ilova ichiga uzatamiz
       } else if (event.data && event.data.type === "scannedResult") {
-        // Skan qilingan kodni Google Apps Script (iframe) ichiga uzatish
-        const iframe = document.getElementById("myIframe");
+        var iframe = document.getElementById("myIframe");
         if (iframe && iframe.contentWindow) {
-          iframe.contentWindow.postMessage(event.data, "*");
+          hammaRamkalargaYuborish(iframe.contentWindow, event.data, 0);
         }
       }
     });
