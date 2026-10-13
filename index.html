@@ -2,107 +2,385 @@
 <html lang="uz">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#1a56cc">
   <title>Qarz Nazorati</title>
 
-  <!-- PWA va Ikonka sozlamalari -->
-  <link rel="manifest" href="manifest.json">
-  <link rel="icon" type="image/jpeg" href="texno_legend_qarz_nazorati_512x512.jpg">
-  <link rel="apple-touch-icon" href="texno_legend_qarz_nazorati_512x512.jpg">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
+  <!-- Telegram Mini App SDK (Telegram'dan tashqarida ochilsa ham zarari yo'q) -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <!-- Shtrix-kod / QR skaner (IMEI uchun) -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 
   <style>
-    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #121212; }
-    iframe { width: 100%; height: 100%; border: none; }
+    :root {
+      --accent: #1a56cc;
+      --bg: #f3f4f6;
+      --app-h: 100dvh;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background: var(--bg);
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      overscroll-behavior: none;
+    }
+    #app {
+      position: fixed;
+      left: 0; right: 0; top: 0;
+      width: 100%;
+      height: var(--app-h);
+      border: 0;
+      display: block;
+      background: var(--bg);
+    }
+
+    /* Yuklanish ekrani */
+    #loader {
+      position: fixed; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 14px;
+      background: var(--bg);
+      z-index: 5;
+      transition: opacity .3s;
+    }
+    #loader.hide { opacity: 0; pointer-events: none; }
+    .spin {
+      width: 42px; height: 42px;
+      border: 4px solid #d6dbe4;
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: s 0.9s linear infinite;
+    }
+    @keyframes s { to { transform: rotate(360deg); } }
+    #loader b { color: #1f2937; font-size: 17px; }
+    #loader small { color: #6b7280; font-size: 13px; }
+
+    /* Ruxsat yo'q ekrani */
+    #denied {
+      display: none;
+      position: fixed; inset: 0;
+      align-items: center; justify-content: center;
+      flex-direction: column; gap: 10px;
+      padding: 24px; text-align: center;
+      background: var(--bg); z-index: 20;
+      color: #1f2937;
+    }
+
+    /* Katalog (mijozlar uchun) */
+    #katalog {
+      display: none;
+      position: fixed; inset: 0;
+      overflow-y: auto;
+      background: linear-gradient(160deg, #1a56cc 0%, #123f99 55%, #0b2a6b 100%);
+      color: #fff;
+      z-index: 15;
+      padding: calc(28px + env(safe-area-inset-top)) 20px calc(28px + env(safe-area-inset-bottom));
+      flex-direction: column; align-items: center; justify-content: center;
+      text-align: center;
+    }
+    .k-brand { font-size: 13px; letter-spacing: 3px; opacity: .8; font-weight: 700; }
+    .k-title { font-size: 26px; font-weight: 800; margin: 6px 0 22px; }
+    .k-icon {
+      width: 96px; height: 96px; border-radius: 28px;
+      background: rgba(255,255,255,.14);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 48px; margin-bottom: 20px;
+    }
+    .k-card {
+      background: #fff; color: #1f2937;
+      border-radius: 20px; padding: 22px 20px;
+      max-width: 420px; width: 100%;
+      box-shadow: 0 12px 32px rgba(0,0,0,.25);
+    }
+    .k-card h2 { margin: 0 0 10px; font-size: 19px; }
+    .k-card p { margin: 0; color: #4b5563; font-size: 15px; line-height: 1.55; }
+    .k-list { text-align: left; margin: 18px 0 0; padding: 0; list-style: none; }
+    .k-list li {
+      display: flex; gap: 10px; align-items: center;
+      padding: 10px 0; border-top: 1px solid #eef0f4;
+      font-size: 14.5px; color: #374151;
+    }
+    .k-list li span { font-size: 20px; }
+    .k-foot { margin-top: 20px; font-size: 13px; opacity: .8; }
+
+    /* Skaner oynasi */
+    #scanner {
+      display: none;
+      position: fixed; inset: 0;
+      background: #000;
+      z-index: 30;
+      flex-direction: column;
+    }
+    #scanner.open { display: flex; }
+    #reader { flex: 1; width: 100%; }
+    #reader video { object-fit: cover; }
+    .scan-top {
+      color: #fff; text-align: center;
+      padding: 14px 16px 8px;
+      font-size: 15px;
+    }
+    .scan-bottom {
+      padding: 12px 16px calc(16px + env(safe-area-inset-bottom));
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .scan-row { display: flex; gap: 8px; }
+    .scan-row input {
+      flex: 1; min-width: 0;
+      padding: 12px; border-radius: 10px; border: 0;
+      font-size: 16px;
+    }
+    .btn {
+      border: 0; border-radius: 10px;
+      padding: 12px 16px;
+      font-size: 15px; font-weight: 700;
+      cursor: pointer;
+    }
+    .btn-ok { background: var(--accent); color: #fff; }
+    .btn-close { background: #ef4444; color: #fff; width: 100%; }
+    #scanErr { color: #fca5a5; font-size: 13px; text-align: center; min-height: 0; }
   </style>
 </head>
 <body>
 
-  <iframe id="myIframe" src="" allow="camera; microphone"></iframe>
+  <div id="loader">
+    <div class="spin"></div>
+    <b>Qarz Nazorati</b>
+    <small>Yuklanmoqda...</small>
+  </div>
 
-  <script>
-    window.addEventListener("DOMContentLoaded", function() {
-      const baseUrl = "https://script.google.com/macros/s/AKfycbxOxLeYqVkfOJ2bB_PbA2pEYx7FwhuZNDkwsCYgZCxvAi6C2GwAvaR8o_WtAmgrzjKsRQ/exec";
+  <div id="denied">
+    <div style="font-size:48px;">🔒</div>
+    <b style="font-size:18px;">Ruxsat yo‘q</b>
+    <div style="color:#6b7280;font-size:14px;">Bu ilova faqat Texno Legend rahbariyati uchun.</div>
+  </div>
 
-      const params = new URLSearchParams(window.location.search);
-      const page = params.get("page");
+ <!-- Katalog: hozircha ishga tushmagan -->
+  <div id="katalog">
+    <div class="k-brand">TEXNO LEGEND</div>
+    <div class="k-title">Katalog</div>
+    <div class="k-icon">🛍</div>
+    <div class="k-card">
+      <h2>Tez orada ishga tushadi</h2>
+      <p>Hozircha bu bo‘lim ishga tushgani yo‘q. Siz bu yerda bizdagi mahsulotlarning naqd narxi va bo‘lib to‘lash shartlari haqida bilib olasiz.</p>
+      <ul class="k-list">
+        <li><span>💵</span> Naqd narxlar</li>
+        <li><span>📅</span> Bo‘lib to‘lash (rassrochka) shartlari</li>
+        <li><span>📱</span> Telefonlar, maishiy texnika va aksessuarlar</li>
+      </ul>
+    </div>
+    <div class="k-foot">Zafarobod bozori · Texno Legend</div>
+  </div>
 
-      let finalUrl = baseUrl + "?";
-      if (page) {
-        finalUrl += "page=" + encodeURIComponent(page) + "&";
+  <iframe id="app" allow="camera; clipboard-write" title="Qarz Nazorati"></iframe>
+
+  <!-- Skaner -->
+  <div id="scanner">
+    <div class="scan-top">📷 IMEI shtrix-kodini ramkaga tuting</div>
+    <div id="reader"></div>
+    <div class="scan-bottom">
+      <div id="scanErr"></div>
+      <div class="scan-row">
+        <input id="qolda" type="text" inputmode="numeric" placeholder="Yoki IMEI ni qo‘lda yozing">
+        <button class="btn btn-ok" onclick="qoldaYuborish()">OK</button>
+      </div>
+      <button class="btn btn-close" onclick="skanerniYopish()">YOPISH</button>
+    </div>
+  </div>
+
+<script>
+// =====================================================
+// SOZLAMALAR
+// =====================================================
+
+// Apps Script ilova manzili (TelegramMenyu.gs dagi TELEGRAM_WEB_APP_URL bilan bir xil)
+var APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxOxLeYqVkfOJ2bB_PbA2pEYx7FwhuZNDkwsCYgZCxvAi6C2GwAvaR8o_WtAmgrzjKsRQ/exec";
+
+// Telegram ichida faqat shu foydalanuvchilarga ochiladi (Akmal, Dinora)
+var RUXSAT_IDLAR = [851826085, 5447719093];
+
+
+// =====================================================
+// TELEGRAM MINI APP SOZLASH
+// =====================================================
+var tg = (window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : null;
+var telegramIchida = !!(tg && tg.initData);
+
+// Qaysi sahifa: ?page=admin yoki ?page=katalog
+var SAHIFA = (new URLSearchParams(window.location.search).get('page') || 'admin').toLowerCase();
+
+// =====================================================
+// KATALOG — mijozlar boti uchun. Hamma ochishi mumkin,
+// Apps Script yuklanmaydi (hozircha faqat xabar).
+// =====================================================
+if (SAHIFA === 'katalog') {
+  document.getElementById('loader').style.display = 'none';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('katalog').style.display = 'flex';
+  if (telegramIchida) {
+    tg.ready();
+    tg.expand();
+    try { tg.setHeaderColor('#1a56cc'); } catch (e) {}
+    try { tg.setBackgroundColor('#123f99'); } catch (e) {}
+  }
+  throw new Error('katalog');   // admin qismi ishlamasin
+}
+
+function balandlikniYangilash() {
+  var h = window.innerHeight;
+  if (telegramIchida && tg.viewportStableHeight) {
+    h = Math.max(tg.viewportStableHeight, tg.viewportHeight || 0);
+  }
+  document.documentElement.style.setProperty('--app-h', h + 'px');
+}
+
+if (telegramIchida) {
+  tg.ready();
+  tg.expand();                                   // to'liq ekran
+  try { tg.disableVerticalSwipes(); } catch (e) {} // pastga surganda ilova yopilib qolmasin
+  try { tg.setHeaderColor('#f3f4f6'); } catch (e) {}
+  try { tg.setBackgroundColor('#f3f4f6'); } catch (e) {}
+
+  tg.onEvent('viewportChanged', balandlikniYangilash);
+
+  // Ruxsat tekshiruvi (asosiy himoya — ilovaning o'z paroli)
+  var user = tg.initDataUnsafe && tg.initDataUnsafe.user;
+  if (!user || RUXSAT_IDLAR.indexOf(Number(user.id)) === -1) {
+    document.getElementById('loader').classList.add('hide');
+    document.getElementById('denied').style.display = 'flex';
+    throw new Error('Ruxsat yo‘q');
+  }
+}
+
+window.addEventListener('resize', balandlikniYangilash);
+balandlikniYangilash();
+
+
+// =====================================================
+// ILOVANI YUKLASH (?page=admin kabi parametrlar uzatiladi)
+// =====================================================
+var app = document.getElementById('app');
+app.addEventListener('load', function () {
+  document.getElementById('loader').classList.add('hide');
+});
+var parametrlar = new URLSearchParams(window.location.search);
+if (!parametrlar.get('page')) parametrlar.set('page', 'admin');
+app.src = APPS_SCRIPT_URL + '?' + parametrlar.toString();
+
+// Sekin internetda ham 12 soniyadan keyin loader yashirilsin
+setTimeout(function () {
+  document.getElementById('loader').classList.add('hide');
+}, 12000);
+
+
+// =====================================================
+// SKANER — ilova ichidan { action: 'openCamera' } keladi,
+// natija { type: 'scannedResult', code } bo'lib qaytadi
+// =====================================================
+var skaner = null;
+var skanerBand = false;
+
+window.addEventListener('message', function (e) {
+  if (e.data && e.data.action === 'openCamera') {
+    skanerniOchish();
+  }
+});
+
+// Apps Script sahifasi ichma-ich iframe'larda turadi — hammasiga yuboramiz
+function natijaniYuborish(kod) {
+  var xabar = { type: 'scannedResult', code: String(kod) };
+  function yubor(w, chuqurlik) {
+    try { w.postMessage(xabar, '*'); } catch (e) {}
+    if (chuqurlik <= 0) return;
+    try {
+      for (var i = 0; i < w.frames.length; i++) yubor(w.frames[i], chuqurlik - 1);
+    } catch (e) {}
+  }
+  yubor(app.contentWindow, 3);
+}
+
+function skanerniOchish() {
+  if (skanerBand) return;
+  skanerBand = true;
+
+  document.getElementById('scanErr').textContent = '';
+  document.getElementById('qolda').value = '';
+  document.getElementById('scanner').classList.add('open');
+
+  if (telegramIchida && tg.BackButton) {
+    tg.BackButton.show();
+    tg.BackButton.onClick(skanerniYopish);
+  }
+
+  if (typeof Html5Qrcode === 'undefined') {
+    document.getElementById('scanErr').textContent = 'Skaner yuklanmadi. IMEI ni qo‘lda yozing.';
+    return;
+  }
+
+  var F = Html5QrcodeSupportedFormats;
+  skaner = new Html5Qrcode('reader', {
+    formatsToSupport: [F.CODE_128, F.CODE_39, F.EAN_13, F.EAN_8, F.UPC_A, F.QR_CODE, F.DATA_MATRIX],
+    experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+    verbose: false
+  });
+
+  skaner.start(
+    { facingMode: 'environment' },
+    {
+      fps: 12,
+      qrbox: function (w, h) {
+        // IMEI shtrix-kodi uzun va ingichka — keng ramka
+        var kenglik = Math.floor(w * 0.9);
+        return { width: kenglik, height: Math.max(80, Math.floor(Math.min(h, kenglik) * 0.4)) };
+      },
+      aspectRatio: 1.0
+    },
+    function (kod) {
+      if (telegramIchida && tg.HapticFeedback) {
+        try { tg.HapticFeedback.notificationOccurred('success'); } catch (e) {}
+      } else if (navigator.vibrate) {
+        navigator.vibrate(120);
       }
-      finalUrl += "embedded=github";
+      natijaniYuborish(kod);
+      skanerniYopish();
+    },
+    function () { /* har kadrda "topilmadi" — e'tibor bermaymiz */ }
+  ).catch(function (err) {
+    document.getElementById('scanErr').textContent =
+      '❌ Kamera ochilmadi. Telegram/brauzerga kamera ruxsatini bering yoki IMEI ni qo‘lda yozing.';
+  });
+}
 
-      document.getElementById("myIframe").src = finalUrl;
+function qoldaYuborish() {
+  var v = document.getElementById('qolda').value.trim();
+  if (!v) return;
+  natijaniYuborish(v);
+  skanerniYopish();
+}
+
+function skanerniYopish() {
+  document.getElementById('scanner').classList.remove('open');
+
+  if (telegramIchida && tg.BackButton) {
+    tg.BackButton.offClick(skanerniYopish);
+    tg.BackButton.hide();
+  }
+
+  var s = skaner;
+  skaner = null;
+  skanerBand = false;
+
+  if (s) {
+    s.stop().then(function () { s.clear(); }).catch(function () {
+      try { s.clear(); } catch (e) {}
     });
-
-    // Xabarni iframe ichidagi BARCHA ichki ramkalarga yetkazish.
-    // (Google Apps Script sahifani 2-3 qavat ramka ichida ko'rsatadi,
-    // shuning uchun oddiy postMessage ichkariga yetib bormaydi.)
-    function hammaRamkalargaYuborish(oyna, malumot, chuqurlik) {
-      if (!oyna || chuqurlik > 4) return;
-      try { oyna.postMessage(malumot, "*"); } catch (e) {}
-      var soni = 0;
-      try { soni = oyna.length; } catch (e) {}
-      for (var i = 0; i < soni; i++) {
-        try { hammaRamkalargaYuborish(oyna[i], malumot, chuqurlik + 1); } catch (e) {}
-      }
-    }
-
-    window.addEventListener("message", function(event) {
-
-      // 1) Ilova kamera so'radi -> skaner oynasini ochamiz
-      if (event.data && event.data.action === "openCamera") {
-        var scannerWindow = window.open("", "_blank", "width=500,height=600");
-        if (scannerWindow) {
-          scannerWindow.document.write(`
-            <!DOCTYPE html>
-            <html>
-            <head>
-              <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <title>Skaner</title>
-              <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"><\/script>
-              <style>
-                body { font-family: sans-serif; text-align: center; background: #121212; color: white; padding: 20px; }
-                #reader { width: 100%; max-width: 400px; margin: auto; }
-                button { padding: 12px 24px; background: #e53935; color: white; border: none; border-radius: 8px; margin-top: 15px; font-size: 16px; cursor: pointer; }
-              </style>
-            </head>
-            <body>
-              <h3>IMEI shtrix-kodini ko'rsating</h3>
-              <div id="reader"></div>
-              <button onclick="window.close()">Yopish</button>
-              <script>
-                const html5QrCode = new Html5Qrcode("reader");
-                html5QrCode.start(
-                  { facingMode: "environment" },
-                  { fps: 10, qrbox: { width: 250, height: 150 } },
-                  (decodedText) => {
-                    if (window.opener) {
-                      window.opener.postMessage({ type: "scannedResult", code: decodedText }, "*");
-                    }
-                    html5QrCode.stop().then(() => window.close());
-                  },
-                  (errorMessage) => {}
-                ).catch(err => alert("Kameraga ruxsat berilmadi: " + err));
-              <\/script>
-            </body>
-            </html>
-          `);
-          scannerWindow.document.close();
-        } else {
-          alert("Brauzeringizda qalqib chiquvchi oynalarga (Popup) ruxsat bering!");
-        }
-
-      // 2) Skaner natija qaytardi -> ilova ichiga uzatamiz
-      } else if (event.data && event.data.type === "scannedResult") {
-        var iframe = document.getElementById("myIframe");
-        if (iframe && iframe.contentWindow) {
-          hammaRamkalargaYuborish(iframe.contentWindow, event.data, 0);
-        }
-      }
-    });
-  </script>
+  }
+}
+</script>
 </body>
 </html>
